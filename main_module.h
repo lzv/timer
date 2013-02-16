@@ -27,12 +27,6 @@ class command {
 class main_module {
 
 	private:
-		static enum day_state_t {in_day, out_day} day_state;
-		static enum time_period_state_t {in_period, out_period} time_period_state;
-		static day current_day;
-		static time_period current_time_period;
-		static long_work current_long_work;
-
 		static vector<command> & commands;
 		static vector<command> & commands_init ();
 		
@@ -56,7 +50,6 @@ class main_module {
 		template<class C> static wstring get_wstring_from_list (const wchar_t *, const vector<C> &, const wchar_t *); // Получение списка для вывода. 
 		static void clear_screen (); // Очистка экрана в консоли.
 		static void check_last_time_period_for_close (); // Если последний временной промежуток еще не закрыт, а учитываемый день уже закончился, закрываем промежуток на момент окончания дня.
-		static void check_states (); // Проверяем текущее состояние программы.
 		static void print_status (); // Печатаем текущий статус.
 		static command parse_command (const wstring &); // Ищет команду в векторе commands. Если не найдено, возвращается command().
 		static bool set_day_end_by_HH_MM (const wstring &, datetime &); // Определяет окончание учитываемого дня, должно быть не раньше текущего момента. Возвращает true, только если параметры корректны и значение по ссылке изменено.

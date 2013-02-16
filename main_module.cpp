@@ -17,12 +17,6 @@ using utils::split_wstring_by_space;
 using utils::merge_wstring;
 using utils::num_declination;
 
-main_module::day_state_t main_module::day_state = out_day;
-main_module::time_period_state_t main_module::time_period_state = out_period;
-day main_module :: current_day;
-time_period main_module :: current_time_period;
-long_work main_module :: current_long_work;
-
 void main_module :: clear_screen () {
 	wcout << flush;
 //	cout << "\E[H\E[J" << flush; // Почему-то глючит на гномовском эмуляторе консоли. В uxterm работает нормально.
@@ -321,23 +315,6 @@ void main_module :: check_last_time_period_for_close () {
 	}
 }
 
-void main_module :: check_states () {
-	// Определяем, текущий момент внутри учитываемого дня, или снаружи.
-	day last_day = data_cache<day>::get_last();
-	day_state = (last_day.is_valid() and last_day.end > datetime()) ? (current_day = last_day, in_day) : (current_day = day(), out_day);
-	// Определяем то же самое для временного периода.
-	time_period last_period = data_cache<time_period>::get_last();
-	if (last_period.is_valid() and last_period.is_opened()) {
-		current_time_period = last_period;
-		current_long_work = last_period.get_work();
-		time_period_state = in_period;
-	} else {
-		current_time_period = time_period();
-		current_long_work = long_work();
-		time_period_state = out_period;
-	}
-}
-
 template<class W> map <int, wstring> main_module :: get_names_map (const vector<W> & val) {
 	map <int, wstring> result;
 	for (typename vector<W>::const_iterator i = val.begin(); i != val.end(); ++i) result[i->id] = i->name;
@@ -413,7 +390,6 @@ void main_module :: start () {
 		clear_screen();
 		if (command_result.length() > 0) print(command_result + L'\n');
 		check_last_time_period_for_close();
-		check_states();
 		print_status();
 		dp()->free();
 		print(L"\nВведите команду: ", true, false);
