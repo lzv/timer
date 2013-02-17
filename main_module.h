@@ -42,6 +42,7 @@ class main_module {
 		static wstring command_update (const vector<wstring> &);
 		static wstring command_list (const vector<wstring> &);
 		static wstring command_hide (const vector<wstring> &);
+		static wstring command_return (const vector<wstring> &);
 		static wstring command_start (const vector<wstring> &);
 		static wstring command_stop (const vector<wstring> &);
 		static wstring command_mark (const vector<wstring> &);

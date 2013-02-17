@@ -19,8 +19,7 @@ using utils::num_declination;
 
 void main_module :: clear_screen () {
 	wcout << flush;
-//	cout << "\E[H\E[J" << flush; // Почему-то глючит на гномовском эмуляторе консоли. В uxterm работает нормально.
-	cout << "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n" << flush;
+	cout << "\E[H\E[J" << flush;
 }
 
 void main_module :: print (const string & val, bool ff, bool need_endl) {
@@ -49,13 +48,14 @@ vector<command> & main_module :: commands = commands_init();
 vector<command> & main_module :: commands_init () {
 	static vector<command> result;
 	result.push_back(command(L"выход", L"Завершение работы программы без закрытия последнего временного периода.", & main_module::command_exit));
-	result.push_back(command(L"помощь", L"Наберите \"помощь команда\" для получения справки по команде. Доступны команды помощь, проверить, пров, добавить, список, скрыть, старт, стоп, отметить, выход.", & main_module::command_help));
+	result.push_back(command(L"помощь", L"Наберите \"помощь команда\" для получения справки по команде. Доступны команды помощь, проверить, пров, добавить, список, скрыть, вернуть, старт, стоп, отметить, выход.", & main_module::command_help));
 	result.push_back(command(L"проверить", L"Проверить (обновить) статус и вывести его.", & main_module::command_check_status));
 	result.push_back(command(L"пров", L"Псевдоним команды проверить. Проверить (обновить) статус и вывести его.", & main_module::command_check_status));
 	result.push_back(command(L"добавить", L"Добавить день с указанием его окончания \"добавить день HH:MM\" (если время указывается раньше текущего момента, считается что оно указано в следующих сутках), добавить однократное дело с указанием количества повторений и периода \"добавить дело одн название количество\", добавить продолжительное дело с указанием нормы минут в день \"добавить дело прод название норма\". Название может состоять из нескольких слов, разделенных пробелами.", & main_module::command_add));
 	result.push_back(command(L"обновить", L"Обновить окончание текущего дня \"обновить день HH:MM\", новое окончание дня не может быть раньше текущего момента. Обновить дело \"обновить дело id название количество\" или \"обновить дело id название норма\", в зависимости от типа дела. Название может состоять из нескольких слов, разделенных пробелами. Вместо любого параметра можно проставить тире (-), его значение будет сохранено.", & main_module::command_update));
-	result.push_back(command(L"список", L"Можно посмотреть список дел, отметок и периодов. Отметки и периоды выводятся за последний учитываемый день.", & main_module::command_list));
+	result.push_back(command(L"список", L"Можно посмотреть список дел, отметок и периодов. Можно посмотреть список скрытых дел командой \"список дел скрытых\". Отметки и периоды выводятся за последний учитываемый день.", & main_module::command_list));
 	result.push_back(command(L"скрыть", L"Параметр: id дела. Отмечает дело удаленным, но все данные сохраняются. Если идет его учет, он останавливается.", & main_module::command_hide));
+	result.push_back(command(L"вернуть", L"Параметр: id дела. Возвращает скрытое дело в список активных.", & main_module::command_return));
 	result.push_back(command(L"старт", L"Параметр: id продолжительного дела. Открывает временной промежуток.", & main_module::command_start));
 	result.push_back(command(L"стоп", L"Без параметров. Закрывает текущий открытый временной промежуток.", & main_module::command_stop));
 	result.push_back(command(L"отметить", L"Параметр: id однократного дела. Добавляет отметку о выполнении.", & main_module::command_mark));
@@ -159,6 +159,31 @@ wstring main_module :: command_update (const vector<wstring> & params) {
 		} else {
 			return L"Ошибка - неопознанный параметр команды.";
 		}
+	}
+}
+
+wstring main_module :: command_return (const vector<wstring> & params) {
+	if (params.size() > 0) {
+		int id = wstring_to_int(params[0]);
+		if (id > 0) {
+			one_work ow = data_cache<one_work>::get_by_id(id);
+			long_work lw = data_cache<long_work>::get_by_id(id);
+			if (ow.is_valid() and ow.deleted) {
+				ow.deleted = false;
+				dp()->update_one_work(ow);
+				return L"Дело " + int_to_wstring(id) + L" (\"" + ow.name + L"\")" + L" снова активно.";
+			} else if (lw.is_valid() and lw.deleted) {
+				lw.deleted = false;
+				dp()->update_long_work(lw);
+				return L"Дело " + int_to_wstring(id) + L" (\"" + lw.name + L"\")" + L" снова активно.";
+			} else {
+				return L"Дело с уазанным id не найдено, либо уже активно.";
+			}
+		} else {
+			return L"Ошибка - некорректный параметр команды.";
+		}
+	} else {
+		return L"Ошибка - не указан параметр команды.";
 	}
 }
 
@@ -279,8 +304,9 @@ wstring main_module :: command_list (const vector<wstring> & params) {
 		// дел | отметок | периодов
 		if (params[0] == L"дел") {
 			wstring result(L"");
-			result += get_wstring_from_list(L"Однократные дела", data_cache<one_work>::get_all<bool>(& one_work::deleted, false), L"Однократные дела не найдены.");
-			result += get_wstring_from_list(L"Продолжительные дела", data_cache<long_work>::get_all<bool>(& long_work::deleted, false), L"Продолжительные дела не найдены.");
+			bool need_hidden = (params.size() > 1 and params[1] == L"скрытых");
+			result += get_wstring_from_list((need_hidden ? L"Скрытые однократные дела" : L"Однократные дела"), data_cache<one_work>::get_all<bool>(& one_work::deleted, need_hidden), (need_hidden ? L"Нет скрытых однократных дел." : L"Однократные дела не найдены."));
+			result += get_wstring_from_list((need_hidden ? L"Скрытые продолжительные дела" : L"Продолжительные дела"), data_cache<long_work>::get_all<bool>(& long_work::deleted, need_hidden), (need_hidden ? L"Нет скрытых продолжительных дел." : L"Продолжительные дела не найдены."));
 			return result;
 		} else if (params[0] == L"отметок" or params[0] == L"периодов") {
 			day last_day = data_cache<day>::get_last();
