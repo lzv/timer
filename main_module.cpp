@@ -393,7 +393,13 @@ void main_module :: print_status () {
 				all_need_seconds += i->second;
 				print(L"    id " + int_to_wstring(i->first) + L" \"" + lw_names[i->first] + L"\" на " + time_count(i->second).get_wstr_for_print());
 			}
-		print(L"Всего осталось свободного времени: " + (from_day_end - time_count(all_need_seconds)).get_wstr_for_print());
+		time_count all_free_time = from_day_end - time_count(all_need_seconds);
+		print(L"Всего осталось свободного времени: " + all_free_time.get_wstr_for_print());
+		long int from_day_end_seconds = from_day_end.get_seconds();
+		if (from_day_end_seconds != 0) {
+			int free_minuts_per_hour = (60 * all_free_time.get_seconds()) / from_day_end_seconds; // При больших числах с осторожностью.
+			print(L"Свободных минут на каждый час до окончания дня: " + int_to_wstring(free_minuts_per_hour));
+		}
 	} else {
 		print(days_count > 0 ? L"Последний учитываемый день уже завершен." : L"Еще нет учитываемых дней.");
 	}

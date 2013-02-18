@@ -22,7 +22,7 @@ class time_count {
 		void init_from_seconds (long int = 0);
 		bool parse_from_HH_MM_SS (const string &); // Возврат true при успешном парсинге строки HH:MM:SS, иначе false. Объект меняется только при успехе. Вместо двоеточия может быть любой символ, так как значения смотрятся по позиции в строке. 
 		bool parse_from_HH_MM_SS (const wstring &); // То же.
-		wstring get_wstr_for_print () const;
+		wstring get_wstr_for_print (bool = false) const; // Параметр - компактный вид.
 		long int get_seconds () const;
 		time_count (long int = 0); // Создание из количества секунд. 
 		time_count (long int, long int, long int);
