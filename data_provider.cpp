@@ -42,21 +42,25 @@ void data_provider :: check_allow_add_day (day & element) throw (add_to_storage_
 	element.id = data_cache<day>::get_max_id() + 1;
 }
 
-void data_provider :: check_in_day_and_last_period_closed (const wstring err_msg_begin, const datetime & now) throw (add_to_storage_error) {
+void data_provider :: check_in_day_and_last_period_closed (const wstring err_msg_begin) throw (add_to_storage_error) {
 	day last_day = data_cache<day>::get_last();
 	if (!last_day.is_valid()) throw add_to_storage_error(err_msg_begin + L" - еще нет учитываемых дней");
-	if (last_day.end <= now) throw add_to_storage_error(err_msg_begin + L" - последний учитываемый день уже завершен");
+	if (last_day.end <= datetime()) throw add_to_storage_error(err_msg_begin + L" - последний учитываемый день уже завершен");
 	time_period last_period = data_cache<time_period>::get_last();
 	if (last_period.is_valid() and last_period.is_opened()) throw add_to_storage_error(err_msg_begin + L" - последний период еще не закрыт");
 }
 
-// Можно добавлять, только если предыдущий временной период закрыт и текущий день еще не завершен. Дело, к которому привязан период, должно существовать. Начало периода устанавливается на текущий момент, окончание - на datetime(0). 
+// Можно добавлять, только если предыдущий временной период закрыт и текущий день еще не завершен. Дело, к которому привязан период, должно существовать. Начало периода должно быть в пределах текущего дня и после окончания прошлого периода, но не позже текущего момента. Окончание устанавливается на datetime(0). 
 void data_provider :: check_allow_add_time_period (time_period & element) throw (add_to_storage_error) {
-	datetime now;
-	check_in_day_and_last_period_closed(L"Ошибка добавления временного периода", now);
+	check_in_day_and_last_period_closed(L"Ошибка добавления временного периода");
 	long_work link_work = data_cache<long_work>::get_by_id(element.work_id);
 	if (!link_work.is_valid() or link_work.deleted) throw add_to_storage_error(L"Ошибка добавления временного периода - привязанное дело не существует либо скрыто");
-	element.start = now;
+	day last_day = data_cache<day>::get_last();
+	time_period last_period = data_cache<time_period>::get_last();
+	datetime need_from = last_day.start, now;
+	if (last_period.is_valid() and need_from < last_period.end) need_from = last_period.end;
+	if (element.start < need_from) element.start = need_from;
+	else if (element.start > now) element.start = now;
 	element.end = datetime(0);
 	if (!element.is_correct()) throw add_to_storage_error(L"Ошибка добавления временного периода - некорректные данные для добавления");
 	element.id = data_cache<time_period>::get_max_id() + 1;
@@ -64,11 +68,10 @@ void data_provider :: check_allow_add_time_period (time_period & element) throw 
 
 // Текущий учитываемый день не должен быть завершен. Последний временной период должен быть закрыт. Дело, к которому привязана отметка, должно существовать. Дата-время отметки устанавливается на текущий момент. 
 void data_provider :: check_allow_add_work_checked (work_checked & element) throw (add_to_storage_error) {
-	datetime now;
-	check_in_day_and_last_period_closed(L"Ошибка добавления отметки однократного дела", now);
+	check_in_day_and_last_period_closed(L"Ошибка добавления отметки однократного дела");
 	one_work link_work = data_cache<one_work>::get_by_id(element.work_id);
 	if (!link_work.is_valid() or link_work.deleted) throw add_to_storage_error(L"Ошибка добавления отметки однократного дела - привязанное дело не существует либо скрыто");
-	element.check = now;
+	element.check = datetime();
 	if (!element.is_correct()) throw add_to_storage_error(L"Ошибка добавления отметки однократного дела - некорректные данные для добавления");
 	element.id = data_cache<work_checked>::get_max_id() + 1;
 }
@@ -103,17 +106,18 @@ void data_provider :: check_allow_update_day (day & element) throw (update_stora
 	if (!element.is_correct()) throw update_storage_error(L"Ошибка обновления дня - некорректные данные для обновления");
 }
 
-// Элемент с указанным id должен существовать. Временной период можно только закрыть текущим моментом, больше его никак изменять нельзя. Если случилось так, что последний учитываемый день уже закончился, временной период закрывается на момент окончания дня. 
+// Элемент с указанным id должен существовать. Можно обновить только окончание открытого периода, закрыв его. Если случилось так, что последний учитываемый день уже закончился, временной период закрывается на момент окончания дня. 
 void data_provider :: check_allow_update_time_period (time_period & element) throw (update_storage_error) {
 	time_period selected = data_cache<time_period>::get_by_id(element.id);
 	if (!selected.is_valid()) throw update_storage_error(L"Ошибка при обновлении временного периода - период с указанным id не найден.");
 	if (selected.is_closed()) throw update_storage_error(L"Ошибка при обновлении временного периода - период уже закрыт.");
+	if (element.end.is_zero()) throw update_storage_error(L"Ошибка при обновлении временного периода - нулевое окончение периода.");
 	day last_day = data_cache<day>::get_last();
 	if (!last_day.is_valid()) throw update_storage_error(L"Ошибка при обновлении временного периода - нет учитываемых дней.");
-	datetime now;
-	element = selected;
-	element.end = last_day.end <= now ? last_day.end : now;
-	if (!element.is_correct()) throw update_storage_error(L"Ошибка обновления временного периода - некорректные данные для обновления, либо временной период был открыт после окончания последнего учитываемого дня");
+	element.work_id = selected.work_id;
+	element.start = selected.start;
+	if (last_day.end < element.end) element.end = last_day.end;
+	if (!element.is_correct()) throw update_storage_error(L"Ошибка обновления временного периода - некорректные данные для обновления");
 }
 
 // Отметки выполнения однократных дел нельзя менять. 

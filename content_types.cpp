@@ -94,20 +94,21 @@ string datetime :: get_sqlite_format () const {
 	}
 }
 
-string datetime :: get_print_format () const {
+string datetime :: get_print_format (bool need_e) const {
 	if (seconds == 0) {
 		return string("---");
 	} else {
 		char str[17];
-		strftime(str, 17, "%d-го %H:%M:%S", & timeinfo);
+		if (need_e) strftime(str, 17, "%d-е %H:%M:%S", & timeinfo);
+		else strftime(str, 17, "%d-го %H:%M:%S", & timeinfo);
 		string result(str);
 		if (result[0] == '0') result.erase(0, 1);
 		return result;
 	}
 }
 
-wstring datetime :: w_get_print_format () const {
-	return str2wstr(get_print_format());
+wstring datetime :: w_get_print_format (bool need_e) const {
+	return str2wstr(get_print_format(need_e));
 }
 
 bool datetime :: parse_sqlite_format (string value) {
@@ -165,6 +166,13 @@ void datetime :: test_print () const {
 	wcout << L"    Флаг перехода на летнее время: " << timeinfo.tm_isdst << endl << endl << flush;
 }
 
+void datetime :: change_time_by_seconds (long int sec) {
+	time_t correct_value = (sec < 0 ? -sec : sec);
+	if (sec < 0) seconds -= (correct_value > seconds ? seconds : correct_value);
+	else seconds += correct_value;
+	timeinfo = *localtime(& seconds);
+}
+
 wstring data_need_id :: get_wstring () const {
 	return int_to_wstring(id);
 };
@@ -183,7 +191,7 @@ wstring long_work :: get_wstring () const {
 };
 
 wstring time_period :: get_wstring () const {
-	return L"Дело " + int_to_wstring(work_id) + L" (\"" + data_cache<long_work>::get_by_id(work_id).name + L"\") выполнялось с " + start.w_get_print_format() + L" по " + (end.is_zero() ? L"текущий момент" : end.w_get_print_format());
+	return L"Дело " + int_to_wstring(work_id) + L" (\"" + data_cache<long_work>::get_by_id(work_id).name + L"\") выполнялось с " + start.w_get_print_format() + L" по " + (end.is_zero() ? L"текущий момент" : end.w_get_print_format(true));
 };
 
 wstring work_checked :: get_wstring () const {

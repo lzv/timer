@@ -24,7 +24,7 @@ class data_provider {
 	protected:
 		virtual ~data_provider () {};
 		template <class workC> void check_allow_add_work (workC &) throw (add_to_storage_error);
-		void check_in_day_and_last_period_closed (const wstring, const datetime &) throw (add_to_storage_error);
+		void check_in_day_and_last_period_closed (const wstring) throw (add_to_storage_error);
 		void check_allow_add_one_work (one_work &) throw (add_to_storage_error); 		// Установка данных по умолчанию (например, дата-время добавления). Проверка корректности данных и допустимости добавления по логике программы. Установка id с учетом уже имеющихся элементов. 
 		void check_allow_add_long_work (long_work &) throw (add_to_storage_error); 			// То же.
 		void check_allow_add_day (day &) throw (add_to_storage_error); 						// То же.

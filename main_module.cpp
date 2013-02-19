@@ -56,8 +56,8 @@ vector<command> & main_module :: commands_init () {
 	result.push_back(command(L"список", L"Можно посмотреть список дел, отметок и периодов. Можно посмотреть список скрытых дел командой \"список дел скрытых\". Отметки и периоды выводятся за последний учитываемый день.", & main_module::command_list));
 	result.push_back(command(L"скрыть", L"Параметр: id дела. Отмечает дело удаленным, но все данные сохраняются. Если идет его учет, он останавливается.", & main_module::command_hide));
 	result.push_back(command(L"вернуть", L"Параметр: id дела. Возвращает скрытое дело в список активных.", & main_module::command_return));
-	result.push_back(command(L"старт", L"Параметр: id продолжительного дела. Открывает временной промежуток.", & main_module::command_start));
-	result.push_back(command(L"стоп", L"Без параметров. Закрывает текущий открытый временной промежуток.", & main_module::command_stop));
+	result.push_back(command(L"старт", L"Параметр: id продолжительного дела. Открывает временной промежуток. Третьим необязательным параметро можно добавить количество минут, уже потраченных на дело. Начало временного промежутка будет соответствующе сдвинуто на более ранне время.", & main_module::command_start));
+	result.push_back(command(L"стоп", L"Закрывает текущий открытый временной промежуток. Необязательный второй параметр - сколько минут было потрачено не на дело. Окончание промежутка будет сдвинуто на более ранне время.", & main_module::command_stop));
 	result.push_back(command(L"отметить", L"Параметр: id однократного дела. Добавляет отметку о выполнении.", & main_module::command_mark));
 	return result;
 }
@@ -83,9 +83,20 @@ wstring main_module :: command_mark (const vector<wstring> & params) {
 }
 
 wstring main_module :: command_stop (const vector<wstring> & params) {
+	// [минуты]
 	time_period last = data_cache<time_period>::get_last();
 	if (last.is_valid() and last.is_opened()) {
 		last.end = datetime();
+		if (params.size() >= 1) {
+			int minuts = wstring_to_int(params[0]);
+			if (minuts > 0) {
+				last.end.change_time_by_seconds(-minuts * 60);
+				if (last.start >= last.end) {
+					last.end = last.start;
+					last.end.change_time_by_seconds(1);
+				}
+			}
+		}
 		dp()->update_time_period(last);
 		return L"Учет дела остановлен.";
 	} else {
@@ -94,12 +105,18 @@ wstring main_module :: command_stop (const vector<wstring> & params) {
 }
 
 wstring main_module :: command_start (const vector<wstring> & params) {
-	if (params.size() > 0) {
+	// id [минуты]
+	if (params.size() >= 1) {
 		int id = wstring_to_int(params[0]);
 		if (id > 0) {
 			long_work lw = data_cache<long_work>::get_by_id(id);
 			if (lw.is_valid()) {
-				time_period element(0, id, datetime(), datetime(0));
+				datetime start;
+				if (params.size() >= 2) {
+					int minuts = wstring_to_int(params[1]);
+					if (minuts > 0) start.change_time_by_seconds(-minuts * 60);
+				}
+				time_period element(0, id, start, datetime(0));
 				dp()->add_time_period(element);
 				return L"Начат учет дела " + int_to_wstring(id) + L" (\"" + lw.name + L"\")";
 			} else {

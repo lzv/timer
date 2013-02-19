@@ -49,8 +49,8 @@ class datetime {
 		explicit datetime (tm val) : seconds(mktime(& val)), timeinfo(val) {};
 
 		string get_sqlite_format () const;
-		string get_print_format () const;
-		wstring w_get_print_format () const;
+		string get_print_format (bool = false) const;
+		wstring w_get_print_format (bool = false) const;
 		bool parse_sqlite_format (string); // Возвращается true, если успешно распарсено и значение объекта изменено, иначе false.
 		void set (time_t); 
 		void set (tm); 
@@ -59,6 +59,7 @@ class datetime {
 		time_count get_time_count () {return time_count(timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec);};
 		time_t get_seconds () {return seconds;};
 		tm get_timeinfo () {return timeinfo;};
+		void change_time_by_seconds (long int); // Корректирует дату-время на указанное количество секунд (может быть отрицательным). 
 
 		bool operator < (const datetime & val) const {return seconds < val.seconds;};
 		bool operator > (const datetime & val) const {return seconds > val.seconds;};
