@@ -379,9 +379,6 @@ void main_module :: print_status () {
 		}
 		vector<work_checked> day_work_checkeds = last_day.get_work_checkeds();
 		print(L"");
-		datetime now;
-		time_count from_day_end = last_day.end - now;
-		print(L"До окончания учитываемого дня " + from_day_end.get_wstr_for_print());
 		map<int,int> need_one_work_checkeds, need_long_work_minuts;
 		vector<one_work> one_works = data_cache<one_work>::get_all<bool>(& one_work::deleted, false);
 		for (vector<one_work>::const_iterator i = one_works.begin(); i != one_works.end(); ++i) need_one_work_checkeds[i->id] = i->count;
@@ -410,6 +407,9 @@ void main_module :: print_status () {
 				all_need_seconds += i->second;
 				print(L"    id " + int_to_wstring(i->first) + L" \"" + lw_names[i->first] + L"\" на " + time_count(i->second).get_wstr_for_print());
 			}
+		datetime now;
+		time_count from_day_end = last_day.end - now;
+		print(L"До окончания учитываемого дня:     " + from_day_end.get_wstr_for_print());
 		time_count all_free_time = from_day_end - time_count(all_need_seconds);
 		print(L"Всего осталось свободного времени: " + all_free_time.get_wstr_for_print());
 		long int from_day_end_seconds = from_day_end.get_seconds();
