@@ -63,13 +63,23 @@ time_count :: time_count (long int vh, long int vm, long int vs) : h(0), m(0), s
 	init_from_seconds (vh * 3600 + vm * 60 + vs); // Вместо прямой инициации сделано так, что бы можно было задавать параметры с разным знаком, минуты или секунды больше 60 или меньше -60, и в результате получить корректный объект. 
 };
 
-wstring time_count :: get_wstr_for_print (bool compact) const {
+wstring time_count :: get_wstr_for_print (char type) const {
 	wstring result(L"");
-	if (compact) {
+	if (type == 'w') {
+		// Как нормальный вывод, но если первые значения нулевые, их место заполняется пробелами. Так же добавляется пробел к значениям меньшим 10.
+		if (h == 0) {
+			if (m == 0) result = wstring(L"          ") + (s < 10 ? L" " : L"") + int_to_wstring(s) + L"с.";
+			else result = wstring(L"     ") + (m < 10 ? L" " : L"") + int_to_wstring(m) + L"м. " + (s < 10 ? L" " : L"") + int_to_wstring(s) + L"с.";
+		} else {
+			result = (h < 10 ? L" " : L"") + int_to_wstring(h) + L"ч. " + (m < 10 ? L" " : L"") + int_to_wstring(m) + L"м. " + (s < 10 ? L" " : L"") + int_to_wstring(s) + L"с.";
+		}
+	} else if (type == 'c') {
+		// Показываются только ненулевые значения.
 		if (h != 0) result += int_to_wstring(h) + L"ч." + (m != 0 or s != 0 ? L" " : L"");
 		if (m != 0) result += int_to_wstring(m) + L"м." + (s != 0 ? L" " : L"");
 		if (s != 0 or (h == 0 and m == 0 and s == 0)) result += int_to_wstring(s) + L"с.";
 	} else {
+		// Нулевые значения показываются, если перед ними был вывод.
 		if (h == 0) {
 			if (m == 0) result = int_to_wstring(s) + L"с.";
 			else result = int_to_wstring(m) + L"м. " + int_to_wstring(s) + L"с.";
@@ -187,7 +197,7 @@ wstring one_work :: get_wstring () const {
 
 wstring long_work :: get_wstring () const {
 	//return work::get_wstring() + L" (" + int_to_wstring(plan) + num_declination(plan, L" минута в день)", L" минуты в день)", L" минут в день)");
-	return work::get_wstring() + L" (" + time_count(plan * 60).get_wstr_for_print(true) + L" в день)";
+	return work::get_wstring() + L" (" + time_count(plan * 60).get_wstr_for_print('c') + L" в день)";
 };
 
 wstring time_period :: get_wstring () const {

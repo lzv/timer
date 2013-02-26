@@ -53,7 +53,7 @@ vector<command> & main_module :: commands_init () {
 	result.push_back(command(L"пров", L"Псевдоним команды проверить. Проверить (обновить) статус и вывести его.", & main_module::command_check_status));
 	result.push_back(command(L"добавить", L"Добавить день с указанием его окончания \"добавить день HH:MM\" (если время указывается раньше текущего момента, считается что оно указано в следующих сутках), добавить однократное дело с указанием количества повторений и периода \"добавить дело одн название количество\", добавить продолжительное дело с указанием нормы минут в день \"добавить дело прод название норма\". Название может состоять из нескольких слов, разделенных пробелами.", & main_module::command_add));
 	result.push_back(command(L"обновить", L"Обновить окончание текущего дня \"обновить день HH:MM\", новое окончание дня не может быть раньше текущего момента. Обновить дело \"обновить дело id название количество\" или \"обновить дело id название норма\", в зависимости от типа дела. Название может состоять из нескольких слов, разделенных пробелами. Вместо любого параметра можно проставить тире (-), его значение будет сохранено.", & main_module::command_update));
-	result.push_back(command(L"список", L"Можно посмотреть список дел, отметок и периодов. Можно посмотреть список скрытых дел командой \"список дел скрытых\". Отметки и периоды выводятся за последний учитываемый день.", & main_module::command_list));
+	result.push_back(command(L"список", L"Можно посмотреть список дел, отметок, периодов и учета. Список учета - это список отметок вместе с периодами. Можно посмотреть список скрытых дел командой \"список дел скрытых\". Отметки и периоды выводятся за последний учитываемый день.", & main_module::command_list));
 	result.push_back(command(L"скрыть", L"Параметр: id дела. Отмечает дело удаленным, но все данные сохраняются. Если идет его учет, он останавливается.", & main_module::command_hide));
 	result.push_back(command(L"вернуть", L"Параметр: id дела. Возвращает скрытое дело в список активных.", & main_module::command_return));
 	result.push_back(command(L"старт", L"Параметр: id продолжительного дела. Открывает временной промежуток. Третьим необязательным параметро можно добавить количество минут, уже потраченных на дело. Начало временного промежутка будет соответствующе сдвинуто на более ранне время.", & main_module::command_start));
@@ -318,18 +318,20 @@ wstring main_module :: get_wstring_from_list (const wchar_t * what, const vector
 
 wstring main_module :: command_list (const vector<wstring> & params) {
 	if (params.size() > 0) {
-		// дел | отметок | периодов
+		// дел | отметок | периодов | учета
 		if (params[0] == L"дел") {
 			wstring result(L"");
 			bool need_hidden = (params.size() > 1 and params[1] == L"скрытых");
 			result += get_wstring_from_list((need_hidden ? L"Скрытые однократные дела" : L"Однократные дела"), data_cache<one_work>::get_all<bool>(& one_work::deleted, need_hidden), (need_hidden ? L"Нет скрытых однократных дел." : L"Однократные дела не найдены."));
 			result += get_wstring_from_list((need_hidden ? L"Скрытые продолжительные дела" : L"Продолжительные дела"), data_cache<long_work>::get_all<bool>(& long_work::deleted, need_hidden), (need_hidden ? L"Нет скрытых продолжительных дел." : L"Продолжительные дела не найдены."));
 			return result;
-		} else if (params[0] == L"отметок" or params[0] == L"периодов") {
+		} else if (params[0] == L"отметок" or params[0] == L"периодов" or params[0] == L"учета") {
 			day last_day = data_cache<day>::get_last();
 			if (last_day.is_valid()) {
-				if (params[0] == L"отметок") return get_wstring_from_list(L"Отметки о выполнении однократных дел", last_day.get_work_checkeds(), L"В последнем учитываемом дне не найдено отметок о выполнении однократных дел.");
-				else return get_wstring_from_list(L"Временные периоды", last_day.get_time_periods(), L"В последнем учитываемом дне не найдены временные периоды.");
+				wstring result(L"");
+				if (params[0] == L"отметок" or params[0] == L"учета") result += get_wstring_from_list(L"Отметки о выполнении однократных дел", last_day.get_work_checkeds(), L"В последнем учитываемом дне не найдено отметок о выполнении однократных дел.");
+				if (params[0] == L"периодов" or params[0] == L"учета") result += get_wstring_from_list(L"Временные периоды", last_day.get_time_periods(), L"В последнем учитываемом дне не найдены временные периоды.");
+				return result;
 			} else {
 				return L"Нет данных для вывода, так как еще нет учитываемых дней.";
 			}
@@ -395,7 +397,7 @@ void main_module :: print_status () {
 					print(L"Осталось сделать однократных дел:");
 					ow_title = true;
 				}
-				print(L"    id " + int_to_wstring(i->first) + L" \"" + ow_names[i->first] + L"\" " + int_to_wstring(i->second) + num_declination(i->second, L" раз", L" раза", L" раз"));
+				print(L"    " + int_to_wstring(i->second) + num_declination(i->second, L" раз - ", L" раза - ", L" раз - ") + ow_names[i->first] + L"   [id " + int_to_wstring(i->first) + L"]");
 			}
 		long int all_need_seconds = 0;
 		for (map<int,int>::const_iterator i = need_long_work_minuts.begin(); i != need_long_work_minuts.end(); ++i)
@@ -405,7 +407,7 @@ void main_module :: print_status () {
 					lw_title = true;
 				}
 				all_need_seconds += i->second;
-				print(L"    id " + int_to_wstring(i->first) + L" \"" + lw_names[i->first] + L"\" на " + time_count(i->second).get_wstr_for_print());
+				print(L"   " + time_count(i->second).get_wstr_for_print('w') + L" - " + lw_names[i->first] + L"   [id " + int_to_wstring(i->first) + L"]");
 			}
 		datetime now;
 		time_count from_day_end = last_day.end - now;
