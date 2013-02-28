@@ -176,9 +176,9 @@ void datetime :: test_print () const {
 	wcout << L"    Флаг перехода на летнее время: " << timeinfo.tm_isdst << endl << endl << flush;
 }
 
-void datetime :: change_time_by_seconds (long int sec) {
+void datetime :: change_by_seconds (long int sec) {
 	time_t correct_value = (sec < 0 ? -sec : sec);
-	if (sec < 0) seconds -= (correct_value > seconds ? seconds : correct_value);
+	if (sec < 0) seconds -= (correct_value > seconds ? seconds : correct_value); // С беззнаковыми типами нужно обращаться с осторожностью.
 	else seconds += correct_value;
 	timeinfo = *localtime(& seconds);
 }

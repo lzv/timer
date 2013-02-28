@@ -59,7 +59,7 @@ class datetime {
 		time_count get_time_count () {return time_count(timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec);};
 		time_t get_seconds () {return seconds;};
 		tm get_timeinfo () {return timeinfo;};
-		void change_time_by_seconds (long int); // Корректирует дату-время на указанное количество секунд (может быть отрицательным). 
+		void change_by_seconds (long int); // Корректирует дату-время на указанное количество секунд (может быть отрицательным). 
 
 		bool operator < (const datetime & val) const {return seconds < val.seconds;};
 		bool operator > (const datetime & val) const {return seconds > val.seconds;};

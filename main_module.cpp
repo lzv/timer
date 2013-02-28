@@ -52,7 +52,7 @@ vector<command> & main_module :: commands_init () {
 	result.push_back(command(L"проверить", L"Проверить (обновить) статус и вывести его.", & main_module::command_check_status));
 	result.push_back(command(L"пров", L"Псевдоним команды проверить. Проверить (обновить) статус и вывести его.", & main_module::command_check_status));
 	result.push_back(command(L"добавить", L"Добавить день с указанием его окончания \"добавить день HH:MM\" (если время указывается раньше текущего момента, считается что оно указано в следующих сутках), добавить однократное дело с указанием количества повторений и периода \"добавить дело одн название количество\", добавить продолжительное дело с указанием нормы минут в день \"добавить дело прод название норма\". Название может состоять из нескольких слов, разделенных пробелами.", & main_module::command_add));
-	result.push_back(command(L"обновить", L"Обновить окончание текущего дня \"обновить день HH:MM\", новое окончание дня не может быть раньше текущего момента. Обновить дело \"обновить дело id название количество\" или \"обновить дело id название норма\", в зависимости от типа дела. Название может состоять из нескольких слов, разделенных пробелами. Вместо любого параметра можно проставить тире (-), его значение будет сохранено.", & main_module::command_update));
+	result.push_back(command(L"обновить", L"Обновить окончание текущего дня \"обновить день HH:MM\", новое окончание дня не может быть раньше текущего момента. Вместо \"HH:MM\" можно написать \"+число\", это количество минут добавится к последнему дню. Обновить дело \"обновить дело id название количество\" или \"обновить дело id название норма\", в зависимости от типа дела. Название может состоять из нескольких слов, разделенных пробелами. Вместо любого параметра можно проставить тире (-), его значение будет сохранено.", & main_module::command_update));
 	result.push_back(command(L"список", L"Можно посмотреть список дел, отметок, периодов и учета. Список учета - это список отметок вместе с периодами. Можно посмотреть список скрытых дел командой \"список дел скрытых\". Отметки и периоды выводятся за последний учитываемый день.", & main_module::command_list));
 	result.push_back(command(L"скрыть", L"Параметр: id дела. Отмечает дело удаленным, но все данные сохраняются. Если идет его учет, он останавливается.", & main_module::command_hide));
 	result.push_back(command(L"вернуть", L"Параметр: id дела. Возвращает скрытое дело в список активных.", & main_module::command_return));
@@ -90,10 +90,10 @@ wstring main_module :: command_stop (const vector<wstring> & params) {
 		if (params.size() >= 1) {
 			int minuts = wstring_to_int(params[0]);
 			if (minuts > 0) {
-				last.end.change_time_by_seconds(-minuts * 60);
+				last.end.change_by_seconds(-minuts * 60);
 				if (last.start >= last.end) {
 					last.end = last.start;
-					last.end.change_time_by_seconds(1);
+					last.end.change_by_seconds(1);
 				}
 			}
 		}
@@ -114,7 +114,7 @@ wstring main_module :: command_start (const vector<wstring> & params) {
 				datetime start;
 				if (params.size() >= 2) {
 					int minuts = wstring_to_int(params[1]);
-					if (minuts > 0) start.change_time_by_seconds(-minuts * 60);
+					if (minuts > 0) start.change_by_seconds(-minuts * 60);
 				}
 				time_period element(0, id, start, datetime(0));
 				dp()->add_time_period(element);
@@ -135,18 +135,31 @@ wstring main_module :: command_update (const vector<wstring> & params) {
 	if (psize < 2) {
 		return L"Ошибка - недостаточно параметров команды.";
 	} else {
-		// день HH:MM
+		// день HH:MM | день +число
 		if (params[0] == L"день") {
 			day last = data_cache<day>::get_last();
-			datetime dt;
-			if (!last.is_valid()) {
-				return L"Ошибка - еще нет учитываемых дней.";
-			} else if (!set_day_end_by_HH_MM(params[1], dt)) {
-				return L"Ошибка - некорректный параметр.";
+			if (last.is_valid()) {
+				datetime dt;
+				if (params[1][0] == L'+') {
+					int add_val;
+					if (params[1].length() <= 1) {
+						return L"Ошибка - не указана добавка к окончанию последнего учитываемого дня.";
+					} else if ((add_val = wstring_to_int(params[1].substr(1))) > 0) {
+						last.end.change_by_seconds(add_val * 60);
+						dp()->update_day(last);
+						return L"День успешно обновлен.";
+					} else {
+						return L"Ошибка - некорректная добавка к окончанию последнего учитываемого дня.";
+					}
+				} else if (set_day_end_by_HH_MM(params[1], dt)) {
+					last.end = dt;
+					dp()->update_day(last);
+					return L"День успешно обновлен.";
+				} else {
+					return L"Ошибка - некорректный параметр.";
+				}
 			} else {
-				last.end = dt;
-				dp()->update_day(last);
-				return L"День успешно обновлен.";
+				return L"Ошибка - еще нет учитываемых дней.";
 			}
 		// дело id название количество | дело id название норма
 		} else if (params[0] == L"дело") {
