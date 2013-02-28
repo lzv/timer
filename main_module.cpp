@@ -448,20 +448,17 @@ void main_module :: start () {
 		print(L"\nВведите команду: ", true, false);
 		getline(wcin, command_line);
 		splitted_line = split_wstring_by_space(command_line);
-		if (splitted_line.size() == 0) {
-			command_result = L"Ошибка - команда не была введена.";
-		} else {
-			selected_command = parse_command(splitted_line[0]);
-			if (selected_command.is_valid()) {
-				splitted_line.erase(splitted_line.begin());
-				try {
-					command_result = selected_command.fun(splitted_line);
-				} catch (storage_operations & exp) {
-					command_result = exp.message;
-				}
-			} else {
-				command_result = L"Ошибка - неопознанная команда.";
+		if (splitted_line.size() == 0) splitted_line.push_back(L"пров");
+		selected_command = parse_command(splitted_line[0]);
+		if (selected_command.is_valid()) {
+			splitted_line.erase(splitted_line.begin());
+			try {
+				command_result = selected_command.fun(splitted_line);
+			} catch (storage_operations & exp) {
+				command_result = exp.message;
 			}
+		} else {
+			command_result = L"Ошибка - неопознанная команда.";
 		}
 	}
 	
