@@ -48,7 +48,7 @@ vector<command> & main_module :: commands = commands_init();
 vector<command> & main_module :: commands_init () {
 	static vector<command> result;
 	result.push_back(command(L"выход", L"Завершение работы программы без закрытия последнего временного периода.", & main_module::command_exit));
-	result.push_back(command(L"помощь", L"Наберите \"помощь команда\" для получения справки по команде. Доступны команды помощь, проверить, пров, добавить, список, скрыть, вернуть, старт, стоп, отметить, выход.", & main_module::command_help));
+	result.push_back(command(L"помощь", L"Наберите \"помощь команда\" для получения справки по команде. Доступны команды помощь, проверить, пров, добавить, список, удалить, скрыть, вернуть, старт, стоп, отметить, выход.", & main_module::command_help));
 	result.push_back(command(L"проверить", L"Проверить (обновить) статус и вывести его.", & main_module::command_check_status));
 	result.push_back(command(L"пров", L"Псевдоним команды проверить. Проверить (обновить) статус и вывести его.", & main_module::command_check_status));
 	result.push_back(command(L"добавить", L"Добавить день с указанием его окончания \"добавить день HH:MM\" (если время указывается раньше текущего момента, считается что оно указано в следующих сутках), добавить однократное дело с указанием количества повторений и периода \"добавить дело одн название количество\", добавить продолжительное дело с указанием нормы минут в день \"добавить дело прод название норма\". Название может состоять из нескольких слов, разделенных пробелами.", & main_module::command_add));
@@ -59,7 +59,29 @@ vector<command> & main_module :: commands_init () {
 	result.push_back(command(L"старт", L"Параметр: id продолжительного дела. Открывает временной промежуток. Третьим необязательным параметро можно добавить количество минут, уже потраченных на дело. Начало временного промежутка будет соответствующе сдвинуто на более ранне время.", & main_module::command_start));
 	result.push_back(command(L"стоп", L"Закрывает текущий открытый временной промежуток. Необязательный второй параметр - сколько минут было потрачено не на дело. Окончание промежутка будет сдвинуто на более ранне время.", & main_module::command_stop));
 	result.push_back(command(L"отметить", L"Параметр: id однократного дела. Добавляет отметку о выполнении.", & main_module::command_mark));
+	result.push_back(command(L"удалить", L"Параметр: id дела. Безвозвратно удаляет дело и все его отметки/временные периоды.", & main_module::command_delete));
 	return result;
+}
+
+wstring main_module :: command_delete (const vector<wstring> & params) {
+	if (params.size() > 0) {
+		int id = wstring_to_int(params[0]);
+		if (id > 0) {
+			one_work ow = data_cache<one_work>::get_by_id(id);
+			long_work lw = data_cache<long_work>::get_by_id(id);
+			if (ow.is_valid() or lw.is_valid()) {
+				if (ow.is_valid()) dp()->delete_one_work(id);
+				else dp()->delete_long_work(id);
+				return L"Дело удалено успешно";
+			} else {
+				return L"Ошибка - дело с указанным id не найдено.";
+			}
+		} else {
+			return L"Ошибка - некорректный id дела.";
+		}
+	} else {
+		return L"Ошибка - не указан id дела.";
+	}
 }
 
 wstring main_module :: command_mark (const vector<wstring> & params) {

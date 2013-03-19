@@ -46,6 +46,7 @@ class main_module {
 		static wstring command_start (const vector<wstring> &);
 		static wstring command_stop (const vector<wstring> &);
 		static wstring command_mark (const vector<wstring> &);
+		static wstring command_delete (const vector<wstring> &);
 
 		template<class W> static map <int, wstring> get_names_map (const vector<W> &); // Возвращает соответствие id дела и его названия.
 		template<class C> static wstring get_wstring_from_list (const wchar_t *, const vector<C> &, const wchar_t *); // Получение списка для вывода. 
